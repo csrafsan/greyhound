@@ -99,12 +99,14 @@ class GreyhoundScraper:
         self,
         csv_file: str = "input.csv",
         output_file: str = "output.csv",
+        final_output_file: str = "final_output.csv",
         errors_file: str = "errors.csv",
         headless: bool = False,
         wait_seconds: int = DEFAULT_WAIT,
     ):
         self.csv_file = csv_file
         self.output_file = output_file
+        self.final_output_file = final_output_file
         self.errors_file = errors_file
         self.headless = headless
         self.wait_seconds = wait_seconds
@@ -668,6 +670,38 @@ class GreyhoundScraper:
         _log(f"  [OK] Done: {name} ({date})\n")
         return True
 
+    @staticmethod
+    def merge_results_to_final_row(results: List[List[str]]) -> List[str]:
+        """
+        One row for final_output.csv:
+        all dog names, then all trainers, then all sires.
+        """
+        if not results:
+            return []
+        names = [row[0] for row in results if len(row) >= 1 and row[0]]
+        trainers = [row[1] for row in results if len(row) >= 2 and row[1]]
+        sires = [row[2] for row in results if len(row) >= 3 and row[2]]
+        return names + trainers + sires
+
+    def save_final_output(self) -> bool:
+        """Write final_output.csv: one row from all output.csv rows."""
+        try:
+            flat = self.merge_results_to_final_row(self.results)
+            if not flat:
+                _log("[WARN] No data for final_output.csv")
+                return False
+            pd.DataFrame([flat]).to_csv(
+                self.final_output_file, index=False, header=False
+            )
+            _log(
+                f"[OK] Saved final row ({len(flat)} values) to "
+                f"{self.final_output_file}"
+            )
+            return True
+        except Exception as exc:
+            _log(f"[ERROR] Saving final output: {exc}")
+            return False
+
     def save_results(self) -> bool:
         try:
             if self.results:
@@ -675,6 +709,7 @@ class GreyhoundScraper:
                     self.output_file, index=False, header=False
                 )
                 _log(f"\n[OK] Saved {len(self.results)} rows to {self.output_file}")
+                self.save_final_output()
             else:
                 _log("\n[WARN] No successful rows to save")
 
@@ -747,6 +782,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Greyhound Recorder scraper")
     parser.add_argument("--input", default="input.csv", help="Input CSV path")
     parser.add_argument("--output", default="output.csv", help="Output CSV path")
+    parser.add_argument(
+        "--final-output",
+        default="final_output.csv",
+        help="Single-row merged CSV (all names, trainers, sires)",
+    )
     parser.add_argument("--errors", default="errors.csv", help="Failed records log")
     parser.add_argument("--limit", type=int, default=None, help="Process only N rows")
     parser.add_argument("--headless", action="store_true", help="Run Chrome headless")
@@ -756,6 +796,7 @@ def main() -> None:
     scraper = GreyhoundScraper(
         csv_file=args.input,
         output_file=args.output,
+        final_output_file=args.final_output,
         errors_file=args.errors,
         headless=args.headless,
         wait_seconds=args.wait,

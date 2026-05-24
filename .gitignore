@@ -5,6 +5,7 @@ __pycache__/
 *.stackdump
 bot_log.txt
 output.csv
+final_output.csv
 errors.csv
 debug_page.html
 race_page.html
