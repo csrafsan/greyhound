@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.stackdump
+bot_log.txt
+output.csv
+errors.csv
+debug_page.html
+race_page.html
+*.xlsx
